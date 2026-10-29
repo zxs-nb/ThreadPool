@@ -58,12 +58,12 @@ public:
 	ThreadPool& operator=(const ThreadPool&) = delete;
 private:
 	//线程执行函数
-	void ThreadFunc();
+	void threadFunc();
 
 	std::vector<std::unique_ptr<Thread>> threads_;     //线程列表
 	int initThreadSize_;       //初始的线程数量
 
-	std::queue<std::shared_ptr<Task>> TaskQue_;   //任务队列
+	std::queue<std::shared_ptr<Task>> taskQue_;   //任务队列
 	std::atomic_int taskSize_;   //任务的数量
 	int taskQueMaxThreshHold_;   //任务队列的数量上限阈值
 

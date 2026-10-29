@@ -2,15 +2,15 @@
 #include <functional>
 #include <thread>
 #include <iostream>
+#include <chrono>
 
-
-const int TASK_MAX_THRESHHLOD = 1024;
-
+const int TASK_MAX_THRESHHOLD = 1024;
+          
 //线程池的构造
 ThreadPool::ThreadPool() : 
 	initThreadSize_(0), 
 	taskSize_(0), 
-	taskQueMaxThreshHold_(TASK_MAX_THRESHHLOD),
+	taskQueMaxThreshHold_(TASK_MAX_THRESHHOLD),
 	poolMode_(PoolMode::MODE_FIXED)
 { }
 
@@ -37,12 +37,16 @@ void ThreadPool::submitTask(std::shared_ptr<Task> sp) {
 
 	//线程的通信 等待队列有空余
 	//用户提交任务，最长不能阻塞超过1s，否则判断提交任务失败，返回
-	notFull.wait(unique_lock, [this]() {
-		return taskSize_ < TASK_MAX_THRESHHLOD;
+	bool hasSpace = notFull.wait_for(unique_lock, std::chrono::seconds(1), [this]() {
+		return taskSize_ < TASK_MAX_THRESHHOLD;
 	});
+	if (!hasSpace) {
+		std::cerr << "task queue is Full, submit task failed. " << std::endl;
+		return;
+	}
 
 	//如果有空余，把任务放入任务队列
-	TaskQue_.push(sp);
+	taskQue_.push(sp);
 	taskSize_++;
 
 	//放入了新任务，任务队列肯定不为空，在notEmpty上通知消费线程
@@ -56,7 +60,7 @@ void ThreadPool::start(int initThreadSize) {
 
 	//创建线程对象
 	for (int i = 0; i < initThreadSize_; ++i) {
-		auto ptr = std::make_unique<Thread>(std::bind(&ThreadPool::ThreadFunc, this));
+		auto ptr = std::make_unique<Thread>(std::bind(&ThreadPool::threadFunc, this));
 		threads_.emplace_back(std::move(ptr));
 	}
 
@@ -67,10 +71,35 @@ void ThreadPool::start(int initThreadSize) {
 }
 
 //线程执行函数       线程池的所有线程从任务队列里消费任务，notEmpty
-void ThreadPool::ThreadFunc() {
-	std::lock_guard<std::mutex> lock(taskQueMtx_);
-	std::cout << "begin threadFunc tid : " << std::this_thread::get_id() << std::endl;
-	std::cout << "end threadFunc tid : " << std::this_thread::get_id() << std::endl;
+void ThreadPool::threadFunc() {
+	for (;;) {
+		std::shared_ptr<Task> task;
+		{
+			//获取锁
+			std::unique_lock<std::mutex> unique_lock(taskQueMtx_);
+
+			//等待notEmpty条件
+			notEmpty.wait(unique_lock, [this]() {return taskSize_ > 0; });
+
+			//从任务队列中取出一个任务
+			task = std::move(taskQue_.front());
+			taskQue_.pop();
+			taskSize_--;
+
+			//如果依然有任务，继续通知其他线程执行任务
+			if (!taskQue_.empty()) {
+				notEmpty.notify_all();
+			}
+
+			//取出任务，进行通知
+			notFull.notify_all();
+		}
+
+		//当前线程执行这个任务
+		if (task != nullptr) {
+			task->run();
+		}
+	}
 }
 
 //线程构造
