@@ -6,6 +6,57 @@
 #include <mutex>
 #include <functional>
 
+class Any
+{
+public:
+	Any() = default;
+	~Any() = default;
+	Any(const Any&) = delete;
+	Any& operator=(const Any&) = delete;
+	Any(Any&&) = default;
+	Any& operator=(Any&&) = default;
+
+	//让Any能接收任意类型数据
+	template<class T>
+	Any(T data) : base_(std::make_unique<Derived<T>>(data))
+	{ }
+
+	//把Any对象里存储的data数据提取出来
+	template<class T>
+	T cast_()
+	{
+		//基类指针转成派生类指针
+		Derived<T>* pd = dynamic_cast<Derived<T>*>(base_.get());
+		if (pd == nullptr) {
+			throw std::exception("type is unmartch");
+		}
+		return pd->data_;
+	}
+
+private:
+	//基类类型
+	class Base
+	{
+	public:
+		virtual ~Base() = default;
+	};
+
+private:
+	//派生类类型
+	template<class T>
+	class Derived : public Base
+	{
+	public:
+		Derived(T data) : data_(data)
+		{}
+		T data_;        //保存任意的其他类型
+	};
+
+private:
+	//定义一个基类指针
+	std::unique_ptr<Base> base_;
+};
+
 enum class PoolMode
 {
 	MODE_FIXED,
@@ -32,7 +83,7 @@ private:
 class Task
 {
 public:
-	virtual void run() = 0;
+	virtual Any run() = 0;
 };
 
 
