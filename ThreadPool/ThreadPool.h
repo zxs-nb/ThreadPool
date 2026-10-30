@@ -5,6 +5,9 @@
 #include <atomic>
 #include <mutex>
 #include <functional>
+#include <exception>
+
+
 
 class Any
 {
@@ -28,7 +31,7 @@ public:
 		//基类指针转成派生类指针
 		Derived<T>* pd = dynamic_cast<Derived<T>*>(base_.get());
 		if (pd == nullptr) {
-			throw std::exception("type is unmartch");
+			throw std::runtime_error("type is unmartch");
 		}
 		return pd->data_;
 	}
@@ -57,6 +60,41 @@ private:
 	std::unique_ptr<Base> base_;
 };
 
+class Task
+{
+public:
+	virtual Any run() = 0;
+};
+
+class Semaphore
+{
+public:
+	Semaphore(int limit = 0) : resLimit_(limit) {}
+	~Semaphore() = default;
+
+	//获取一个信号量资源
+	void wait()
+	{
+		std::unique_lock<std::mutex> lock(mtx_);
+		cond_.wait(lock, [&]()->bool {return resLimit_ > 0; });
+		resLimit_--;
+	}
+
+	//增加一个信号量资源
+	void post()
+	{
+		std::unique_lock<std::mutex> lock(mtx_);
+		resLimit_++;
+		cond_.notify_all();
+	}
+
+private:
+	int resLimit_;
+	std::mutex mtx_;
+	std::condition_variable cond_;
+};
+
+
 enum class PoolMode
 {
 	MODE_FIXED,
@@ -78,12 +116,6 @@ public:
 	void start();
 private:
 	ThreadFunc func_;
-};
-
-class Task
-{
-public:
-	virtual Any run() = 0;
 };
 
 
