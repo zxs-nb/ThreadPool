@@ -8,7 +8,7 @@
 #include <exception>
 
 
-
+//Any类型:可以接受任意数据的类型
 class Any
 {
 public:
@@ -60,12 +60,14 @@ private:
 	std::unique_ptr<Base> base_;
 };
 
+//任务抽象基类
 class Task
 {
 public:
 	virtual Any run() = 0;
 };
 
+//实现一个信号量类
 class Semaphore
 {
 public:
@@ -94,7 +96,22 @@ private:
 	std::condition_variable cond_;
 };
 
+//实现接收提交到线程池的task任务执行完成后的返回值类型Result
+class Result
+{
+public:
+	Result(std::shared_ptr<Task>, bool isValid = true);
+	~Result() = default;
 
+
+private:
+	Any any_;     //存储任务的返回值
+	Semaphore sem_;  //线程通信信号量
+	std::shared_ptr<Task> task_; //指向对应获取返回值的任务对象
+	bool isValid_;  //返回值是否有效
+};
+
+//线程支持的模式
 enum class PoolMode
 {
 	MODE_FIXED,
@@ -135,7 +152,7 @@ public:
 	void setTaskQueMaxThreshHold(int threshhold);
 
 	//给线程池提交任务
-	void submitTask(std::shared_ptr<Task> sp);
+	Result submitTask(std::shared_ptr<Task> sp);
 
 	ThreadPool(const ThreadPool&) = delete;
 	ThreadPool& operator=(const ThreadPool&) = delete;

@@ -31,7 +31,7 @@ void ThreadPool::setTaskQueMaxThreshHold(int threshhold) {
 }
 
 //给线程池提交任务      用户通过提供的接口生产任务notFull
-void ThreadPool::submitTask(std::shared_ptr<Task> sp) {
+Result ThreadPool::submitTask(std::shared_ptr<Task> sp) {
 	//获取锁
 	std::unique_lock<std::mutex> unique_lock(taskQueMtx_);
 
@@ -42,7 +42,7 @@ void ThreadPool::submitTask(std::shared_ptr<Task> sp) {
 	});
 	if (!hasSpace) {
 		std::cerr << "task queue is Full, submit task failed. " << std::endl;
-		return;
+		return Result(sp, false);
 	}
 
 	//如果有空余，把任务放入任务队列
@@ -51,6 +51,9 @@ void ThreadPool::submitTask(std::shared_ptr<Task> sp) {
 
 	//放入了新任务，任务队列肯定不为空，在notEmpty上通知消费线程
 	notEmpty.notify_all();
+
+	//返回任务的Result对象
+	return Result(sp);
 }
 
 //开启线程池
@@ -121,4 +124,11 @@ void Thread::start() {
 	//创建一个线程来执行一个线程函数
 	std::thread t(func_);   // C++11来说 线程对象t 和线程函数func_
 	t.detach();       // 设置分离线程  pthread_detach   pthread_t设置成分离线程
+}
+
+Result::Result(std::shared_ptr<Task> task, bool isValid) 
+	:task_(task) 
+	,isValid_(isValid)
+{
+
 }
