@@ -1,4 +1,4 @@
-\# C++ ThreadPool
+# C++ ThreadPool
 
 
 
@@ -8,7 +8,7 @@
 
 
 
-\## 项目介绍
+## 项目介绍
 
 
 
@@ -18,43 +18,43 @@
 
 
 
-\## 核心功能
+## 核心功能
 
 
 
-\- \[x] Any 类型封装
+- [x] Any 类型封装
 
-\- \[x] Result 类封装
+- [x] Result 类封装
 
-\- \[ ] 泛型任务提交
+- [ ] 泛型任务提交
 
-\- \[ ] std::future 获取任务返回值
+- [ ] std::future 获取任务返回值
 
-\- \[ ] 线程池动态扩容
+- [ ] 线程池动态扩容
 
-\- \[ ] 线程池优雅关闭
-
-
-
-\## 技术栈
+- [ ] 线程池优雅关闭
 
 
 
-\- C++
-
-\- STL
-
-\- std::thread
-
-\- std::mutex
-
-\- std::condition\_variable
-
-\- std::future
+## 技术栈
 
 
 
-\## 项目结构
+- C++
+
+- STL
+
+- std::thread
+
+- std::mutex
+
+- std::condition_variable
+
+- std::future
+
+
+
+## 项目结构
 
 
 
