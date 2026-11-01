@@ -106,7 +106,7 @@ void ThreadPool::threadFunc() {
 
 		//当前线程执行这个任务
 		if (task != nullptr) {
-			task->run();
+			task->exec();
 		}
 	}
 }
@@ -130,5 +130,37 @@ Result::Result(std::shared_ptr<Task> task, bool isValid)
 	:task_(task) 
 	,isValid_(isValid)
 {
+	task_->setResult(this);
+}
 
+void Result::setValue(Any any) {
+	sem_.post();
+	this->any_ = std::move(any);
+}
+
+Any Result::get() {
+	if (!isValid_) {
+		return "";
+	}
+	sem_.wait();    //task任务没有执行完，会阻塞用户的线程
+	return std::move(any_);
+}
+
+
+
+// *************Task方法实现:
+
+Task::Task()
+	:result_(nullptr)
+{ }
+
+
+void Task::exec() {
+	if (result_ != nullptr) {
+		result_->setValue(run());
+	}
+}
+
+void Task::setResult(Result* res) {
+	result_ = res;
 }

@@ -31,7 +31,7 @@ public:
 		//基类指针转成派生类指针
 		Derived<T>* pd = dynamic_cast<Derived<T>*>(base_.get());
 		if (pd == nullptr) {
-			throw std::runtime_error("type is unmartch");
+			throw std::runtime_error("type is unmatch");
 		}
 		return pd->data_;
 	}
@@ -60,11 +60,19 @@ private:
 	std::unique_ptr<Base> base_;
 };
 
+class Result;
 //任务抽象基类
 class Task
 {
 public:
+	Task();
+	~Task() = default;
 	virtual Any run() = 0;
+	void exec();
+	void setResult(Result* res);
+
+private:
+	Result* result_;
 };
 
 //实现一个信号量类
@@ -103,6 +111,11 @@ public:
 	Result(std::shared_ptr<Task>, bool isValid = true);
 	~Result() = default;
 
+	//将Task对象成员方法run得到的返回值放入Result对象内
+	void setValue(Any any);
+
+	//阻塞读取任务值，返回给调用者
+	Any get();
 
 private:
 	Any any_;     //存储任务的返回值
