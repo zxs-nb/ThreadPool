@@ -6,7 +6,7 @@
 #include <mutex>
 #include <functional>
 #include <exception>
-
+#include <map>
 
 //Any类型:可以接受任意数据的类型
 class Any
@@ -134,7 +134,7 @@ enum class PoolMode
 class Thread
 {
 public:
-	using ThreadFunc = std::function<void()>;
+	using ThreadFunc = std::function<void(int)>;
 
 	//线程构造
 	Thread(ThreadFunc func);
@@ -144,8 +144,13 @@ public:
 
 	// 启动线程
 	void start();
+
+	//获取线程id
+	int getId()const;
 private:
 	ThreadFunc func_;
+	static int generateId_;
+	int threadId_;    //保存线程id
 };
 
 
@@ -164,6 +169,9 @@ public:
 	//设置task任务队列的上限阈值
 	void setTaskQueMaxThreshHold(int threshhold);
 
+	//设置线程池cached模式下线程阈值
+	void setThreadSizeThreshHold(int threshhold);
+
 	//给线程池提交任务
 	Result submitTask(std::shared_ptr<Task> sp);
 
@@ -171,12 +179,21 @@ public:
 	ThreadPool& operator=(const ThreadPool&) = delete;
 private:
 	//线程执行函数
-	void threadFunc();
+	void threadFunc(int threadId);
 
-	std::vector<std::unique_ptr<Thread>> threads_;     //线程列表
+	//检查pool的运行状态
+	bool checkRunningState() const;
+private:
+	std::unordered_map<int, std::unique_ptr<Thread>> threads_;//线程列表
+
 	int initThreadSize_;       //初始的线程数量
+	int threadSizeThreshHold_;  //线程数量上限阈值
+	std::atomic_int curThreadSize_; //记录当前线程池线程的数量
+	std::atomic_int idleThreadSize_; //表示空闲线程的数量
 
 	std::queue<std::shared_ptr<Task>> taskQue_;   //任务队列
+	//在主线程调用的submitTask，导致任务的数量+1，而取出任务是在线程池的子线程，所以记录任务的数量的变量要用原子变量
+	//并且需要用到任务数量来进行比较，不可能每次访都加锁取size，所以需要创建一个变量来专门记录任务数量
 	std::atomic_int taskSize_;   //任务的数量
 	int taskQueMaxThreshHold_;   //任务队列的数量上限阈值
 
@@ -185,5 +202,7 @@ private:
 	std::condition_variable notEmpty; //表示任务队列不空
 
 	PoolMode poolMode_;   //当前线程池的模式
+
+	std::atomic_bool isPoolRunning_; //表示当前线程池的启动状态
 };
 
