@@ -6,7 +6,7 @@
 #include <mutex>
 #include <functional>
 #include <exception>
-#include <map>
+#include <unordered_map>
 
 //Any类型:可以接受任意数据的类型
 class Any
@@ -200,6 +200,7 @@ private:
 	std::mutex taskQueMtx_;      //保证任务队列的线程安全
 	std::condition_variable notFull; //表示任务队列不满
 	std::condition_variable notEmpty; //表示任务队列不空
+	std::condition_variable exitCond_;//等待子线程全部执行完任务并正确回收
 
 	PoolMode poolMode_;   //当前线程池的模式
 

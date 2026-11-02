@@ -23,7 +23,20 @@ ThreadPool::ThreadPool() :
 //线程池的析构
 ThreadPool::~ThreadPool()
 {
-	
+	//1.修改线程池状态，告诉所有子线程:线程池要关闭了
+	isPoolRunning_ = false;
+
+	//2.获取任务队列锁，准备唤醒所有睡眠等待任务的线程
+	std::unique_lock<std::mutex> lock(taskQueMtx_);
+
+	//3.唤醒卡在notEmpty等待任务的工作线程
+	notEmpty.notify_all();
+
+	//4.阻塞等待所有子线程正确退出并从threads_中把自己擦除
+	exitCond_.wait(lock, [this]() ->bool {
+		return threads_.empty();
+	});
+	std::cout << "ThreadPool::~ThreadPool() 析构成功，所有线程已安全回收！" << std::endl;
 }
 
 //判断线程池的运行状态
@@ -133,11 +146,21 @@ void ThreadPool::threadFunc(int threadId) {
 			std::cout << "tid: " << std::this_thread::get_id()
 				<< "尝试获取任务..." << std::endl;
 
-			//cached模式下，可能已经创建了很多的线程，但是空闲时间超过60s，应该把多余的线程结束回收
-			if (poolMode_ == PoolMode::MODE_CACHED) {
-				while (taskSize_ == 0) {
+			while (taskSize_ == 0) {
+				if (!isPoolRunning_) {
+					threads_.erase(threadId);
+					curThreadSize_--;
+					idleThreadSize_--;
+					exitCond_.notify_all();  //唤醒析构函数，检查是否满足析构完全退出条件
+					std::cout << "线程 " << std::this_thread::get_id() << "退出！" << std::endl;
+					return;
+				}
+				//cached模式下，可能已经创建了很多的线程，但是空闲时间超过60s，应该把多余的线程结束回收
+				if (poolMode_ == PoolMode::MODE_CACHED) {
 					//每一秒钟返回一次来确定是否超时
-					if (std::cv_status::timeout == notEmpty.wait_for(unique_lock, std::chrono::seconds(1))) {
+					if (std::cv_status::timeout ==
+						notEmpty.wait_for(unique_lock, std::chrono::seconds(1)))
+					{
 						auto now = std::chrono::high_resolution_clock().now();
 						auto dur = std::chrono::duration_cast<std::chrono::seconds>(now - lastTime);
 						if (dur.count() >= THREAD_MAX_IDLE_TIME
@@ -145,28 +168,27 @@ void ThreadPool::threadFunc(int threadId) {
 							curThreadSize_--;
 							idleThreadSize_--;
 							threads_.erase(threadId);
-							std::cout << "线程 " << threadId << " 退出!" << std::endl;
+							std::cout << "线程 " << std::this_thread::get_id() << "退出！" << std::endl;
 							return;
 						}
 					}
 				}
-			}
-			else {
-				//等待notEmpty条件
-				notEmpty.wait(unique_lock, [this]() {return taskSize_ > 0; });
+				else {
+					notEmpty.wait(unique_lock);    //为固定线程模式，释放锁
+				}
 			}
 
 			std::cout << "this thread tid: " << std::this_thread::get_id()
 				<< "获取任务成功..." << std::endl;
 
-			//从任务队列中取出一个任务
-			idleThreadSize_--;
-			task = std::move(taskQue_.front());
-			taskQue_.pop();
-			taskSize_--;
-
-			//如果依然有任务，继续通知其他线程执行任务
-			if (!taskQue_.empty()) {
+			//任务队列不为空，取出任务执行
+			idleThreadSize_--;     //空闲线程减一
+			task = std::move(taskQue_.front()); //取出任务队列的任务
+			taskQue_.pop();  //从任务队列弹出取出的任务
+			taskSize_--;     //任务数量减一
+			
+			//若任务队列不为空，唤醒等待任务的线程
+			if (taskSize_ > 0) {
 				notEmpty.notify_all();
 			}
 
