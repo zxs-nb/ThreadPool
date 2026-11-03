@@ -18,26 +18,19 @@ int main()
 		ThreadPool threadPool;
 		//用户自己设置线程池的工作模式
 		threadPool.setMode(PoolMode::MODE_CACHED);
-		threadPool.setThreadSizeThreshHold(8);
-		threadPool.start();
-		Result res = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res1 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res2 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res3 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res4 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res5 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res6 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res7 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res8 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res9 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res10 = threadPool.submitTask(std::make_shared<MyClass>());
-		Result res11 = threadPool.submitTask(std::make_shared<MyClass>());
+		//设置线程初始数量，并开启线程工作
+		threadPool.start(1);
+		threadPool.submitTask(std::make_shared<MyClass>());
+		threadPool.submitTask(std::make_shared<MyClass>());
+		threadPool.submitTask(std::make_shared<MyClass>());
+		threadPool.submitTask(std::make_shared<MyClass>());
+		/*Result res = threadPool.submitTask(std::make_shared<MyClass>());
 		int sum = res.get().cast_<int>();
-		std::cout << "计算结果为: " << sum << std::endl;
-		getchar();
+		std::cout << "计算结果为: " << sum << std::endl;*/
 	}
 	catch (const std::exception& e) {
 		std::cout << "Exception is " << e.what() << std::endl;
 	}
+	std::cout << "好酥服呀~" << std::endl;
 	return 0;
 }

@@ -161,7 +161,7 @@ public:
 	~ThreadPool();
 
 	//开启线程池
-	void start(int initThreadSize = 4);
+	void start(int initThreadSize = std::thread::hardware_concurrency());
 	
 	//设置线程池的工作模式
 	void setMode(PoolMode mode);

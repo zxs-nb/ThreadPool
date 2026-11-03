@@ -99,12 +99,12 @@ Result ThreadPool::submitTask(std::shared_ptr<Task> sp) {
 		&& taskSize_ > idleThreadSize_
 		&& curThreadSize_ < threadSizeThreshHold_) 
 	{
-		std::cout << ">>> create new thread " << std::this_thread::get_id() << std::endl;
 		//创建新线程
 		auto ptr = std::make_unique<Thread>(std::bind(&ThreadPool::threadFunc, this, std::placeholders::_1));
 		int threadId = ptr->getId();
 		threads_.emplace(threadId, std::move(ptr));
 		threads_[threadId]->start();   //启动新的线程
+		std::cout << ">>> create new thread, 自定义Id: " << threadId << std::endl;
 		curThreadSize_++;
 		idleThreadSize_++;
 	}
